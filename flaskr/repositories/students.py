@@ -1,14 +1,31 @@
 from flaskr.db import get_db
+import logging
 
 
 class StudentsRepository:
     def __init__(self):
         self.db = get_db()
 
-    def get_students(self):
-        students = self.db.execute(
-                    'SELECT * FROM students ORDER BY lastName ASC'
-                ).fetchall()
+    def get_students(self, query_args=None):
+        if query_args is not None and (len(query_args) > 0) is True:
+            query_string = 'SELECT * FROM students WHERE '
+
+            args_length = len(query_args)
+            index = 0
+            for key, value in query_args.items():
+                query_string += f"{key} = '{value}'"
+
+                index += 1
+                if index < args_length:
+                    query_string += ' AND '
+
+            query_string += ' ORDER BY lastName ASC'
+            students = self.db.execute(query_string).fetchall()
+        else:
+            students = self.db.execute(
+                        'SELECT * FROM students ORDER BY lastName ASC'
+                    ).fetchall()
+
         students = self.get_list_from_rows(students)
         return students
 
