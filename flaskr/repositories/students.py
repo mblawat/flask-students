@@ -1,5 +1,4 @@
 from flaskr.db import get_db
-import logging
 
 
 class StudentsRepository:
