@@ -1,12 +1,14 @@
 import os
 from flask import Flask
+from . import db
+from . import students
 
 
 def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_mapping(
         SECRET_KEY='dev',
-        DATABASE=os.path.join(app.instance_path, 'flaskr.sqlite')
+        SQLALCHEMY_DATABASE_URI='sqlite:////tmp/test.db'
     )
 
     if test_config is None:
@@ -19,10 +21,7 @@ def create_app(test_config=None):
     except OSError:
         pass
 
-    from . import db
     db.init_app(app)
-
-    from . import students
     app.register_blueprint(students.bp)
 
     return app

@@ -1,9 +1,11 @@
 import json
 from flask import (
-    Blueprint, request, make_response
+    Blueprint, request, make_response, url_for
 )
 from werkzeug.exceptions import abort
-from .repositories import students
+from .db import object_as_dict
+from .repositories.students import StudentsRepository
+from .errors.exceptions import EntityNotFoundException
 
 bp = Blueprint('students', __name__)
 
@@ -11,62 +13,65 @@ bp = Blueprint('students', __name__)
 @bp.route('/students/', defaults={'id': None}, methods=['GET'])
 @bp.route('/students/<id>', methods=['GET'])
 def index(id):
-    repository = students.StudentsRepository()
+    repository = StudentsRepository()
 
     if id is None:
-        jResult = json.dumps(repository.get_students())
-        return create_response(jResult)
+        students = repository.get_all(request.args)
+        students = [object_as_dict(x) for x in students]
+        jResult = json.dumps(students)
+        return create_response(response_body=jResult)
     else:
-        student = repository.get_student(id)
+        student = repository.get(id)
         if student is None:
             abort(404, f"Student id {id} does not exist.")
 
-        jResult = json.dumps(student)
-        return create_response(jResult)
+        jResult = json.dumps(object_as_dict(student))
+        return create_response(response_body=jResult)
 
 
 @bp.route('/students', methods=['POST'])
 def create():
-    repository = students.StudentsRepository()
-
     json_student = request.get_json()
-    if json_student['firstName'] is None or \
-            json_student['lastName'] is None or \
-            json_student['age'] is None or \
+    if json_student['fname'] is None or \
+            json_student['lname'] is None or \
+            json_student['agegrup'] is None or \
             json_student['specialization'] is None:
         abort(400, f"Student data is incorrect.")
 
-    repository.create_student(json_student)
-    return create_response('')
+    repository = StudentsRepository()
+    id = repository.create_student(json_student)
+    url = "http://localhost:5000" + url_for('students.index') + str(id)
+    response_json = json.dumps({"url": url})
+    return create_response(response_body=response_json, status_code=201)
 
 
 @bp.route('/students/<id>', methods=['PUT'])
 def update(id):
     json_student = request.get_json()
-    if json_student['firstName'] is None or \
-            json_student['lastName'] is None or \
-            json_student['age'] is None or \
+    if json_student['fname'] is None or \
+            json_student['lname'] is None or \
+            json_student['agegrup'] is None or \
             json_student['specialization'] is None:
-        abort(400, f"Student data is incorrect.")
+        abort(400, f"Student data is incomplete.")
 
-    repository = students.StudentsRepository()
+    repository = StudentsRepository()
 
-    student = repository.get_student(id)
-    if student is None:
-        abort(404, f"Student id {id} does not exist.")
-
-    repository.update_student(json_student)
-    return create_response('')
+    try:
+        repository.update(id, json_student)
+    except EntityNotFoundException as exception:
+        abort(404, str(exception))
+    else:
+        return create_response()
 
 
 @bp.route('/students/<id>', methods=['DELETE'])
 def delete(id):
-    repository = students.StudentsRepository()
-    repository.delete_student(id)
-    return create_response('')
+    repository = StudentsRepository()
+    repository.delete(id)
+    return create_response()
 
 
-def create_response(response_body):
-    response = make_response(response_body)
+def create_response(response_body='{}', status_code=200):
+    response = make_response(response_body, status_code)
     response.mimetype = 'application/json'
     return response

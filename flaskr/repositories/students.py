@@ -1,54 +1,63 @@
-from flaskr.db import get_db
+from ..db import students_db
+from ..db import Student
+from ..errors.exceptions import EntityNotFoundException
 
 
 class StudentsRepository:
-    def __init__(self):
-        self.db = get_db()
-
-    def get_students(self):
-        students = self.db.execute(
-                    'SELECT * FROM students ORDER BY lastName ASC'
-                ).fetchall()
-        students = self.get_list_from_rows(students)
+    def get_all(self, query_args=None):
+        if query_args is not None and (len(query_args) > 0) is True:
+            query = self.student_query_from(query_args)
+            students = query.all()
+        else:
+            students = Student.query.all()
         return students
 
-    def get_student(self, id):
-        student = self.db.execute(
-                    'SELECT * FROM students WHERE id = ?', (id,)
-                ).fetchone()
-
-        if student is None:
-            return None
-        else:
-            student = self.get_dict_from_row(student)
-            return student
+    def get(self, id):
+        return Student.query.filter_by(id=id).first()
 
     def create_student(self, json_student):
-        self.db.execute(
-            'INSERT INTO students (firstName, lastName, age, specialization)'
-            ' VALUES (?, ?, ?, ?)',
-            (json_student['firstName'], json_student['lastName'],
-                json_student['age'], json_student['specialization'])
-                )
-        self.db.commit()
+        student = Student()
+        student.update_with(json_student)
+        students_db.session.add(student)
+        students_db.session.commit()
+        return student.id
 
-    def update_student(self, json_student):
-        self.db.execute(
-            'UPDATE students SET firstName = ?, lastName = ?, age = ?, specialization = ? WHERE id = ?',
-            (json_student['firstName'], json_student['lastName'],
-                json_student['age'], json_student['specialization'], json_student['id'])
-                )
-        self.db.commit()
-    
-    def delete_student(self, id):
-        self.db.execute('DELETE FROM students WHERE id = ?', (id,))
-        self.db.commit()
+    def update(self, id, json_student):
+        student = self.get(id)
+        if student is None:
+            raise EntityNotFoundException(f"Student with id {id} not found.")
 
-    def get_dict_from_row(self, row):
-        return [x for x in row]
+        student.update_with(json_student)
+        students_db.session.commit()
 
-    def get_list_from_rows(self, rows):
-        row_list = []
-        for row in rows:
-            row_list.append([x for x in row])
-        return row_list
+    def delete(self, id):
+        student = self.get(id)
+        if student is not None:
+            students_db.session.delete(student)
+            students_db.session.commit()
+
+    def student_query_from(self, query_dict):
+        query = Student.query
+
+        if query_dict.get('id') is not None:
+            query = query.filter(
+                Student.id == query_dict.get('id')
+            )
+        if query_dict.get('fname') is not None:
+            query = query.filter(
+                Student.fname == query_dict.get('fname')
+            )
+        if query_dict.get('lname') is not None:
+            query = query.filter(
+                Student.lname == query_dict.get('lname')
+            )
+        if query_dict.get('agegrup') is not None:
+            query = query.filter(
+                Student.agegrup == query_dict.get('agegrup')
+            )
+        if query_dict.get('specialization') is not None:
+            query = query.filter(
+                Student.specialization == query_dict.get('specialization')
+            )
+
+        return query
