@@ -21,16 +21,16 @@ def init_db_command():
 
 class Student(students_db.Model):
     id = students_db.Column(students_db.Integer, primary_key=True)
-    firstName = students_db.Column(students_db.String(60), nullable=False)
-    lastName = students_db.Column(students_db.String(60), nullable=False)
-    age = students_db.Column(students_db.Integer, nullable=False)
+    fname = students_db.Column(students_db.String(60), nullable=False)
+    lname = students_db.Column(students_db.String(60), nullable=False)
+    agegrup = students_db.Column(students_db.Integer, nullable=False)
     specialization = students_db.Column(students_db.String(120),
                                         nullable=False)
 
     def update_with(self, update_dict):
-        self.firstName = update_dict['firstName']
-        self.lastName = update_dict['lastName']
-        self.age = update_dict['age']
+        self.fname = update_dict['fname']
+        self.lname = update_dict['lname']
+        self.agegrup = update_dict['agegrup']
         self.specialization = update_dict['specialization']
 
 

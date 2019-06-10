@@ -16,12 +16,12 @@ def index(id):
     repository = StudentsRepository()
 
     if id is None:
-        students = repository.get_students(request.args)
+        students = repository.get_all(request.args)
         students = [object_as_dict(x) for x in students]
         jResult = json.dumps(students)
         return create_response(response_body=jResult)
     else:
-        student = repository.get_student(id)
+        student = repository.get(id)
         if student is None:
             abort(404, f"Student id {id} does not exist.")
 
@@ -31,15 +31,14 @@ def index(id):
 
 @bp.route('/students', methods=['POST'])
 def create():
-    repository = StudentsRepository()
-
     json_student = request.get_json()
-    if json_student['firstName'] is None or \
-            json_student['lastName'] is None or \
-            json_student['age'] is None or \
+    if json_student['fname'] is None or \
+            json_student['lname'] is None or \
+            json_student['agegrup'] is None or \
             json_student['specialization'] is None:
         abort(400, f"Student data is incorrect.")
 
+    repository = StudentsRepository()
     id = repository.create_student(json_student)
     url = "http://localhost:5000" + url_for('students.index') + str(id)
     response_json = json.dumps({"url": url})
@@ -49,16 +48,16 @@ def create():
 @bp.route('/students/<id>', methods=['PUT'])
 def update(id):
     json_student = request.get_json()
-    if json_student['firstName'] is None or \
-            json_student['lastName'] is None or \
-            json_student['age'] is None or \
+    if json_student['fname'] is None or \
+            json_student['lname'] is None or \
+            json_student['agegrup'] is None or \
             json_student['specialization'] is None:
         abort(400, f"Student data is incomplete.")
 
     repository = StudentsRepository()
 
     try:
-        repository.update_student(json_student)
+        repository.update(id, json_student)
     except EntityNotFoundException as exception:
         abort(404, str(exception))
     else:
@@ -68,11 +67,11 @@ def update(id):
 @bp.route('/students/<id>', methods=['DELETE'])
 def delete(id):
     repository = StudentsRepository()
-    repository.delete_student(id)
+    repository.delete(id)
     return create_response()
 
 
-def create_response(response_body='', status_code=200):
+def create_response(response_body='{}', status_code=200):
     response = make_response(response_body, status_code)
     response.mimetype = 'application/json'
     return response

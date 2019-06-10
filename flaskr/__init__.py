@@ -1,5 +1,7 @@
 import os
 from flask import Flask
+from . import db
+from . import students
 
 
 def create_app(test_config=None):
@@ -19,10 +21,7 @@ def create_app(test_config=None):
     except OSError:
         pass
 
-    from . import db
     db.init_app(app)
-
-    from . import students
     app.register_blueprint(students.bp)
 
     return app
