@@ -1,43 +1,39 @@
-import sqlite3
-
 import click
-from flask import current_app, g
 from flask.cli import with_appcontext
+from flask_sqlalchemy import SQLAlchemy
+from flask_sqlalchemy import inspect
+
+students_db = SQLAlchemy()
 
 
 def init_app(app):
-    app.teardown_appcontext(close_db)
+    students_db.init_app(app)
     app.cli.add_command(init_db_command)
-
-
-def init_db():
-    db = get_db()
-
-    with current_app.open_resource('schema.sql') as f:
-        db.executescript(f.read().decode('utf8'))
 
 
 @click.command('init-db')
 @with_appcontext
 def init_db_command():
     """Clear the existing data and create new tables."""
-    init_db()
+    students_db.create_all()
     click.echo('Initialized the database.')
 
 
-def get_db():
-    if 'db' not in g:
-        g.db = sqlite3.connect(
-            current_app.config['DATABASE'],
-            detect_types=sqlite3.PARSE_DECLTYPES
-        )
-        g.db.row_factory = sqlite3.Row
+class Student(students_db.Model):
+    id = students_db.Column(students_db.Integer, primary_key=True)
+    firstName = students_db.Column(students_db.String(60), nullable=False)
+    lastName = students_db.Column(students_db.String(60), nullable=False)
+    age = students_db.Column(students_db.Integer, nullable=False)
+    specialization = students_db.Column(students_db.String(120),
+                                        nullable=False)
 
-    return g.db
+    def update_with(self, update_dict):
+        self.firstName = update_dict['firstName']
+        self.lastName = update_dict['lastName']
+        self.age = update_dict['age']
+        self.specialization = update_dict['specialization']
 
 
-def close_db(e=None):
-    db = g.pop('db', None)
-
-    if db is not None:
-        db.close()
+def object_as_dict(obj):
+    return {c.key: getattr(obj, c.key)
+            for c in inspect(obj).mapper.column_attrs}

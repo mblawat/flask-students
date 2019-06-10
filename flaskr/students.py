@@ -1,9 +1,11 @@
 import json
 from flask import (
-    Blueprint, request, make_response
+    Blueprint, request, make_response, url_for
 )
 from werkzeug.exceptions import abort
+from .db import object_as_dict
 from .repositories.students import StudentsRepository
+from .errors.exceptions import EntityNotFoundException
 
 bp = Blueprint('students', __name__)
 
@@ -15,6 +17,7 @@ def index(id):
 
     if id is None:
         students = repository.get_students(request.args)
+        students = [object_as_dict(x) for x in students]
         jResult = json.dumps(students)
         return create_response(response_body=jResult)
     else:
@@ -22,7 +25,7 @@ def index(id):
         if student is None:
             abort(404, f"Student id {id} does not exist.")
 
-        jResult = json.dumps(student)
+        jResult = json.dumps(object_as_dict(student))
         return create_response(response_body=jResult)
 
 
@@ -37,8 +40,10 @@ def create():
             json_student['specialization'] is None:
         abort(400, f"Student data is incorrect.")
 
-    repository.create_student(json_student)
-    return create_response(status_code=201)
+    id = repository.create_student(json_student)
+    url = "http://localhost:5000" + url_for('students.index') + str(id)
+    response_json = json.dumps({"url": url})
+    return create_response(response_body=response_json, status_code=201)
 
 
 @bp.route('/students/<id>', methods=['PUT'])
@@ -48,16 +53,16 @@ def update(id):
             json_student['lastName'] is None or \
             json_student['age'] is None or \
             json_student['specialization'] is None:
-        abort(400, f"Student data is incorrect.")
+        abort(400, f"Student data is incomplete.")
 
     repository = StudentsRepository()
 
-    student = repository.get_student(id)
-    if student is None:
-        abort(404, f"Student id {id} does not exist.")
-
-    repository.update_student(json_student)
-    return create_response()
+    try:
+        repository.update_student(json_student)
+    except EntityNotFoundException as exception:
+        abort(404, str(exception))
+    else:
+        return create_response()
 
 
 @bp.route('/students/<id>', methods=['DELETE'])
@@ -67,7 +72,7 @@ def delete(id):
     return create_response()
 
 
-def create_response(response_body=None, status_code=200):
+def create_response(response_body='', status_code=200):
     response = make_response(response_body, status_code)
     response.mimetype = 'application/json'
     return response
